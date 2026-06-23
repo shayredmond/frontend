@@ -8,7 +8,17 @@ import type { ValueChangedEvent, HomeAssistant, Route } from "../../../types";
 import "./account/cloud-account";
 import "./login/cloud-login-panel";
 
-const LOGGED_IN_URLS = ["account", "google-assistant", "alexa"];
+const LOGGED_IN_URLS = [
+  "account",
+  "remote",
+  "backup",
+  "voice-assistants",
+  "companion",
+  "webrtc",
+  "webhooks",
+  "google-assistant",
+  "alexa",
+];
 const NOT_LOGGED_IN_URLS = ["login", "register", "forgot-password"];
 
 @customElement("ha-config-cloud")
@@ -52,6 +62,30 @@ class HaConfigCloud extends HassRouterPage {
       },
       account: {
         tag: "cloud-account",
+      },
+      remote: {
+        tag: "cloud-remote-pref",
+        load: () => import("./account/cloud-remote-pref"),
+      },
+      backup: {
+        tag: "cloud-backup-pref",
+        load: () => import("./account/cloud-backup-pref"),
+      },
+      "voice-assistants": {
+        tag: "cloud-tts-pref",
+        load: () => import("./account/cloud-tts-pref"),
+      },
+      companion: {
+        tag: "cloud-companion-pref",
+        load: () => import("./account/cloud-companion-pref"),
+      },
+      webrtc: {
+        tag: "cloud-ice-servers-pref",
+        load: () => import("./account/cloud-ice-servers-pref"),
+      },
+      webhooks: {
+        tag: "cloud-webhooks",
+        load: () => import("./account/cloud-webhooks"),
       },
     },
   };
