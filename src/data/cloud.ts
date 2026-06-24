@@ -28,6 +28,9 @@ export interface CloudPreferences {
   google_report_state: boolean;
   tts_default_voice: [string, string];
   cloud_ice_servers_enabled: boolean;
+  // Whether the user has completed (or dismissed) Cloud onboarding. Optional
+  // until backend support lands; absent is treated as onboarded by the UI.
+  cloud_onboarding_complete?: boolean;
 }
 
 export interface CloudStatusLoggedIn {
@@ -157,6 +160,7 @@ export const updateCloudPref = (
     remote_allow_remote_enable?: CloudPreferences["remote_allow_remote_enable"];
     strict_connection?: CloudPreferences["strict_connection"];
     cloud_ice_servers_enabled?: CloudPreferences["cloud_ice_servers_enabled"];
+    cloud_onboarding_complete?: CloudPreferences["cloud_onboarding_complete"];
   }
 ) =>
   hass.callWS({

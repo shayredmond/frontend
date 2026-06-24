@@ -1,18 +1,21 @@
 import {
   mdiBackupRestore,
-  mdiCalendar,
   mdiCellphone,
-  mdiCloudOutline,
-  mdiCreditCardOutline,
+  mdiCheck,
+  mdiCheckCircle,
   mdiDeleteForever,
   mdiDotsVertical,
   mdiDownload,
   mdiEarth,
+  mdiEye,
+  mdiEyeOff,
   mdiFaceAgent,
   mdiFlaskOutline,
+  mdiGoogleAssistant,
   mdiHeart,
   mdiMicrophone,
   mdiMicrophoneMessage,
+  mdiOpenInNew,
   mdiVideo,
   mdiWebhook,
 } from "@mdi/js";
@@ -28,15 +31,18 @@ import { debounce } from "../../../../common/util/debounce";
 import "../../../../components/ha-alert";
 import "../../../../components/ha-button";
 import "../../../../components/ha-card";
+import "../../../../components/ha-dialog";
+import "../../../../components/ha-dialog-footer";
 import "../../../../components/ha-dropdown";
 import "../../../../components/ha-dropdown-item";
+import "../../../../components/ha-expansion-panel";
 import "../../../../components/ha-icon-button";
 import "../../../../components/ha-icon-next";
+import "../../../../components/ha-logo-svg";
 import "../../../../components/ha-md-list";
 import "../../../../components/ha-md-list-item";
 import "../../../../components/ha-svg-icon";
 import "../../../../components/ha-switch";
-import "../../../../components/input/ha-input-copy";
 import type { HaDropdownSelectEvent } from "../../../../components/ha-dropdown";
 import type { HaSwitch } from "../../../../components/ha-switch";
 import type { BackupConfig } from "../../../../data/backup";
@@ -111,7 +117,17 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
     webhooks: true,
   };
 
-  @state() private _onboardingStep = 0;
+  @state() private _emailRevealed = false;
+
+  @state() private _setupDialogOpen = false;
+
+  @state() private _openPanel = "remote";
+
+  @state() private _setupAlexa = false;
+
+  @state() private _setupGoogle = false;
+
+  @state() private _cloudBackup = false;
 
   protected render() {
     const signedOut = this._accountState === "signed_out";
@@ -123,7 +139,7 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
         .narrow=${this.narrow}
         header="Home Assistant Cloud"
       >
-        ${signedOut || onboarding
+        ${signedOut
           ? nothing
           : html`
               <ha-dropdown
@@ -155,9 +171,10 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
         <div class="content">
           ${signedOut
             ? this._renderSignedOut()
-            : onboarding
-              ? this._renderOnboarding()
-              : this._renderOverview()}
+            : html`
+                ${onboarding ? this._renderOnboarding() : nothing}
+                ${this._renderOverview()}
+              `}
           ${this._renderPreviewCard()}
         </div>
       </hass-subpage>
@@ -234,6 +251,11 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
               "ui.panel.config.cloud.account.thank_you_note"
             )}
           </p>
+          <p class="muted">
+            Every subscription funds Home Assistant and the Open Home
+            Foundation, paying full-time developers and keeping the project
+            independent. No private equity, no ads, no data harvesting.
+          </p>
           ${this._renderSubscriptionState()}
         </div>
       </ha-card>
@@ -242,35 +264,37 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
 
   private _renderSubscriptionState(): TemplateResult {
     const accountState = this._accountState;
-    const renewLabel =
-      accountState === "trial"
-        ? `Free trial ends on ${this._renewalDate}`
-        : accountState === "expired"
-          ? `Expired on ${this._renewalDate}`
-          : `Renews on ${this._renewalDate}`;
     return html`
       ${accountState === "trial"
         ? html`<ha-alert alert-type="warning" title="Free trial">
             Add a payment method before your trial ends to keep your cloud
             features.
+            <ha-button
+              slot="action"
+              size="small"
+              href="https://account.nabucasa.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Add payment method
+            </ha-button>
           </ha-alert>`
         : nothing}
       ${accountState === "expired"
         ? html`<ha-alert alert-type="error" title="Subscription expired">
             Renew your subscription to restore remote access, backups, and
             voice.
+            <ha-button
+              slot="action"
+              size="small"
+              href="https://account.nabucasa.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Renew subscription
+            </ha-button>
           </ha-alert>`
         : nothing}
-      <ha-md-list>
-        <ha-md-list-item>
-          <ha-svg-icon slot="start" .path=${mdiCreditCardOutline}></ha-svg-icon>
-          <span slot="headline">$65 per year</span>
-        </ha-md-list-item>
-        <ha-md-list-item>
-          <ha-svg-icon slot="start" .path=${mdiCalendar}></ha-svg-icon>
-          <span slot="headline">${renewLabel}</span>
-        </ha-md-list-item>
-      </ha-md-list>
     `;
   }
 
@@ -301,14 +325,18 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           <ha-md-list>
             <ha-md-list-item>
               <span slot="headline">Email</span>
-              <ha-input-copy
-                slot="supporting-text"
-                readonly
-                masked-toggle
-                .value=${this._email}
-                .maskedValue=${this._maskedEmail}
-                .label=${"Copy email"}
-              ></ha-input-copy>
+              <span slot="supporting-text" class="email-line">
+                <span
+                  >${this._emailRevealed
+                    ? this._email
+                    : this._maskedEmail}</span
+                >
+                <ha-icon-button
+                  .path=${this._emailRevealed ? mdiEyeOff : mdiEye}
+                  .label=${this._emailRevealed ? "Hide email" : "Show email"}
+                  @click=${this._toggleEmail}
+                ></ha-icon-button>
+              </span>
             </ha-md-list-item>
             <ha-md-list-item>
               <span slot="headline">${renewalLabel}</span>
@@ -371,7 +399,7 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
             )}
             ${this._featureRow(
               mdiBackupRestore,
-              "Backups",
+              "Cloud backups",
               this._renderBackupStatus(),
               "/config/cloud/backup"
             )}
@@ -482,14 +510,13 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
     return html`
       <ha-card outlined>
         <div class="card-content hero">
-          <div class="hero-eyebrow">Home Assistant Cloud</div>
           <h2 class="hero-title">Supercharge your smart home</h2>
           <p class="lead">
             The easy, secure, and private way to get more out of Home Assistant,
             and the simplest way to fund its development.
           </p>
           <p class="trial-note">
-            Try everything free for 31 days. No payment information required up
+            Try everything free for a month. No payment information required up
             front.
           </p>
         </div>
@@ -537,186 +564,424 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
   }
 
   private _renderOnboarding(): TemplateResult {
-    const steps = this._onboardingSteps();
-    const total = steps.length;
-    const index = Math.min(this._onboardingStep, total - 1);
-    const step = steps[index];
-    const isFirst = index === 0;
-    const isLast = index === total - 1;
-
     return html`
-      <ha-card outlined>
-        <div class="card-content">
-          <div class="onboarding-progress">
-            <span>Step ${index + 1} of ${total}</span>
-            <div class="dots">
-              ${steps.map(
-                (_step, i) =>
-                  html`<span
-                    class="dot ${i === index ? "current" : ""}"
-                  ></span>`
-              )}
+      <ha-card outlined class="onboarding-card">
+        <div class="card-content ready-card">
+          <div class="ready-left">
+            <h2>Home Assistant Cloud is ready</h2>
+            <p class="muted">
+              Your subscription unlocks features that make Home Assistant more
+              powerful, private, and connected. Set them up now, or come back
+              any time.
+            </p>
+            <div class="ready-actions">
+              <ha-button appearance="filled" @click=${this._openSetupDialog}>
+                Start setup
+              </ha-button>
+              <ha-button appearance="plain" @click=${this._onboardingFinish}>
+                Review later
+              </ha-button>
             </div>
           </div>
-          <div class="feature-header">
-            <ha-svg-icon .path=${step.icon}></ha-svg-icon>
-            <span class="card-title">${step.title}</span>
+          <div class="ready-grid">
+            ${this._readyChip(mdiEarth, "Remote access", "remote")}
+            ${this._readyChip(mdiBackupRestore, "Cloud backups", "backup")}
+            ${this._readyChip(
+              mdiMicrophoneMessage,
+              "Voice assistants",
+              "voice"
+            )}
+            ${this._readyChip(mdiVideo, "Smoother streaming", "streaming")}
           </div>
-          ${step.body}
-        </div>
-        <div class="card-actions onboarding-actions">
-          ${isFirst
-            ? nothing
-            : html`<ha-button appearance="plain" @click=${this._onboardingBack}
-                >Back</ha-button
-              >`}
-          <span class="spacer"></span>
-          ${isLast
-            ? nothing
-            : html`<ha-button
-                appearance="plain"
-                @click=${this._onboardingFinish}
-                >Skip for now</ha-button
-              >`}
-          <ha-button
-            appearance="filled"
-            @click=${isLast ? this._onboardingFinish : this._onboardingNext}
-          >
-            ${isFirst ? "Get started" : isLast ? "Go to Cloud" : "Next"}
-          </ha-button>
         </div>
       </ha-card>
+      ${this._renderSetupDialog()}
     `;
   }
 
-  private _onboardingSteps(): {
-    icon: string;
-    title: string;
-    body: TemplateResult;
-  }[] {
-    return [
-      {
-        icon: mdiCloudOutline,
-        title: "Welcome to Home Assistant Cloud",
-        body: html`
-          <p class="muted">
-            You're in. Let's set up Cloud one feature at a time. Turn on what
-            you want and skip the rest. It only takes a few minutes.
-          </p>
-          <p class="muted">
-            Everything you enable helps fund Home Assistant and the Open Home
-            Foundation.
-          </p>
-        `,
-      },
-      {
-        icon: mdiEarth,
-        title: "Remote access",
-        body: html`
-          <p class="muted">
-            Securely reach your Home Assistant from any device, with no port
-            forwarding or VPN. This is the heart of Cloud.
-          </p>
-          <ha-md-list>
-            <ha-md-list-item>
-              <span slot="headline">Enable remote access</span>
-              <span slot="supporting-text"
-                >Recommended. You can turn it off any time.</span
-              >
-              <ha-switch
-                slot="end"
-                .checked=${this._remoteEnabled}
-                @change=${this._toggleRemote}
-              ></ha-switch>
-            </ha-md-list-item>
-          </ha-md-list>
-        `,
-      },
-      {
-        icon: mdiBackupRestore,
-        title: "Backups",
-        body: html`
-          <p class="muted">
-            Keep your latest backup stored privately and encrypted, so you can
-            restore your whole system on first boot.
-          </p>
-          <div class="onboarding-inline-action">
-            <ha-button appearance="plain" @click=${this._openBackup}>
-              Set up automatic backups
-            </ha-button>
+  private _readyChip(icon: string, label: string, key: string): TemplateResult {
+    const status = this._panelStatus(key);
+    return html`
+      <div class="ready-chip ${key}">
+        <div class="ready-chip-icon">
+          <ha-svg-icon .path=${icon}></ha-svg-icon>
+          ${status !== "off"
+            ? html`<ha-svg-icon
+                class="chip-badge ${status}"
+                .path=${mdiCheckCircle}
+              ></ha-svg-icon>`
+            : nothing}
+        </div>
+        <span>${label}</span>
+      </div>
+    `;
+  }
+
+  private _renderSetupDialog(): TemplateResult {
+    return html`
+      <ha-dialog
+        .open=${this._setupDialogOpen}
+        header-title="Make the most of Home Assistant Cloud"
+        @closed=${this._setupDialogClosed}
+      >
+        <p class="muted setup-intro">
+          Home Assistant Cloud can do several things. Set them up whenever you
+          like, at your own pace, and come back here any time.
+        </p>
+        <div class="setup-dialog">
+          <ha-expansion-panel
+            outlined
+            data-panel="remote"
+            .expanded=${this._openPanel === "remote"}
+            @expanded-changed=${this._panelExpanded}
+          >
+            ${this._panelHeader(
+              "remote",
+              mdiEarth,
+              "Remote access",
+              "Reach your home from anywhere"
+            )}
+            <div class="panel-body">
+              <p class="muted">
+                Securely reach your Home Assistant from any device, with no port
+                forwarding or VPN.
+              </p>
+              <ha-button appearance="plain" @click=${this._toggleRemote}>
+                ${this._remoteEnabled ? "Turn off" : "Turn on"}
+              </ha-button>
+            </div>
+          </ha-expansion-panel>
+
+          <ha-expansion-panel
+            outlined
+            data-panel="backup"
+            .expanded=${this._openPanel === "backup"}
+            @expanded-changed=${this._panelExpanded}
+          >
+            ${this._panelHeader(
+              "backup",
+              mdiBackupRestore,
+              "Cloud backups",
+              "Off-site copy of your backups"
+            )}
+            <div class="panel-body">
+              ${this._backupHealth === "none"
+                ? html`
+                    <p class="muted">
+                      You don't have backups set up yet. Create a backup first,
+                      then come back to store an encrypted copy in the cloud.
+                    </p>
+                    <ha-button
+                      appearance="plain"
+                      href="/config/backup"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ha-svg-icon
+                        slot="start"
+                        .path=${mdiOpenInNew}
+                      ></ha-svg-icon>
+                      Set up backups
+                    </ha-button>
+                  `
+                : html`
+                    <p class="muted">
+                      Keep an encrypted off-site copy of your latest backup,
+                      ready to restore on first boot.
+                    </p>
+                    <ha-button
+                      appearance="plain"
+                      @click=${this._toggleCloudBackup}
+                    >
+                      ${this._cloudBackup ? "Turn off" : "Turn on"}
+                    </ha-button>
+                  `}
+            </div>
+          </ha-expansion-panel>
+
+          <ha-expansion-panel
+            outlined
+            data-panel="voice"
+            .expanded=${this._openPanel === "voice"}
+            @expanded-changed=${this._panelExpanded}
+          >
+            ${this._panelHeader(
+              "voice",
+              mdiMicrophoneMessage,
+              "Voice assistants",
+              "Alexa, Google, and Home Assistant voice"
+            )}
+            <div class="panel-body">
+              <p class="muted">
+                Talk to your home your way. Home Assistant Cloud powers fast,
+                private voice for Assist out of the box, and you can add Amazon
+                Alexa or Google Assistant.
+              </p>
+              ${this._voiceCloudCard()}
+              ${this._assistantCard(
+                "Amazon Alexa",
+                "Amazon Alexa",
+                mdiMicrophone,
+                "alexa",
+                "Voice control with Echo devices",
+                [
+                  "Control devices from your Echo by voice",
+                  "Use Home Assistant in your Alexa routines",
+                ],
+                this._alexaLinked,
+                this._setupAlexa,
+                this._toggleSetupAlexa
+              )}
+              ${this._assistantCard(
+                "Google Assistant",
+                "Google Home",
+                mdiGoogleAssistant,
+                "google",
+                "Hands-free control with Nest devices",
+                [
+                  "Control devices from your Nest speakers by voice",
+                  "Cast your cameras to a Nest Hub display",
+                ],
+                this._googleLinked,
+                this._setupGoogle,
+                this._toggleSetupGoogle
+              )}
+            </div>
+          </ha-expansion-panel>
+
+          <ha-expansion-panel
+            outlined
+            data-panel="streaming"
+            .expanded=${this._openPanel === "streaming"}
+            @expanded-changed=${this._panelExpanded}
+          >
+            ${this._panelHeader(
+              "streaming",
+              mdiVideo,
+              "Smoother streaming",
+              "Faster, more reliable camera feeds"
+            )}
+            <div class="panel-body">
+              <p class="muted">
+                Make camera feeds and Music Assistant playback faster and more
+                reliable, over a secure connection.
+              </p>
+              <ha-button appearance="plain" @click=${this._toggleWebrtc}>
+                ${this._webrtcEnabled ? "Turn off" : "Turn on"}
+              </ha-button>
+            </div>
+          </ha-expansion-panel>
+        </div>
+
+        <ha-dialog-footer slot="footer">
+          <ha-button slot="primaryAction" @click=${this._closeSetupDialog}>
+            Done
+          </ha-button>
+        </ha-dialog-footer>
+      </ha-dialog>
+    `;
+  }
+
+  private _panelHeader(
+    key: string,
+    icon: string,
+    title: string,
+    helper: string
+  ): TemplateResult {
+    return html`
+      <div slot="leading-icon" class="panel-icon ${key}">
+        <ha-svg-icon .path=${icon}></ha-svg-icon>
+      </div>
+      <div slot="header" class="panel-header">
+        <div class="panel-heading">
+          <span class="panel-title">${title}</span>
+          <span class="panel-sub">${helper}</span>
+        </div>
+        ${this._statusTick(this._panelStatus(key))}
+      </div>
+    `;
+  }
+
+  private _panelStatus(key: string): "on" | "recommended" | "off" {
+    switch (key) {
+      case "remote":
+        // On by default, green when enabled.
+        return this._remoteEnabled ? "on" : "off";
+      case "backup":
+        // Off by default (blank), green once cloud backup is set up.
+        return this._backupHealth !== "none" && this._cloudBackup
+          ? "on"
+          : "off";
+      case "voice":
+        // Green once an assistant is linked; orange while a started setup is
+        // still incomplete; blank when nothing has been started.
+        if (this._alexaLinked || this._googleLinked) {
+          return "on";
+        }
+        return this._setupAlexa || this._setupGoogle ? "recommended" : "off";
+      case "streaming":
+        // On by default, green when enabled.
+        return this._webrtcEnabled ? "on" : "off";
+      default:
+        return "off";
+    }
+  }
+
+  private _statusTick(status: "on" | "recommended" | "off") {
+    if (status === "off") {
+      return nothing;
+    }
+    return html`<ha-svg-icon
+      class="status-tick ${status}"
+      .path=${mdiCheckCircle}
+    ></ha-svg-icon>`;
+  }
+
+  private _panelExpanded(ev: CustomEvent<{ expanded: boolean }>) {
+    const key = (ev.currentTarget as HTMLElement).getAttribute("data-panel");
+    if (ev.detail.expanded) {
+      this._openPanel = key ?? "";
+    } else if (this._openPanel === key) {
+      this._openPanel = "";
+    }
+  }
+
+  private _voiceCloudCard(): TemplateResult {
+    return html`
+      <div class="option-card">
+        <div class="option-head">
+          <div class="option-icon cloud">
+            <ha-logo-svg></ha-logo-svg>
           </div>
-        `,
-      },
-      {
-        icon: mdiMicrophoneMessage,
-        title: "Alexa and Google",
-        body: html`
-          <p class="muted">
-            Control your home by voice through Amazon Alexa and Google Home.
-            Linking takes about 30 seconds each.
-          </p>
-          <div class="onboarding-inline-action">
-            <ha-button appearance="plain" @click=${this._openAssistants}>
-              Link voice assistants
-            </ha-button>
+          <div class="option-heading">
+            <span class="option-title">Home Assistant Cloud</span>
+            <span class="option-sub">
+              Fast, natural text-to-speech and speech-to-text for Assist
+            </span>
           </div>
-        `,
-      },
-      {
-        icon: mdiVideo,
-        title: "Cameras and streaming",
-        body: html`
-          <p class="muted">
-            Make camera feeds and Music Assistant playback faster and more
-            reliable, over a secure connection.
-          </p>
-          <ha-md-list>
-            <ha-md-list-item>
-              <span slot="headline">Enable better streaming</span>
-              <span slot="supporting-text">Recommended for camera users.</span>
-              <ha-switch
-                slot="end"
-                .checked=${this._webrtcEnabled}
-                @change=${this._toggleWebrtc}
-              ></ha-switch>
-            </ha-md-list-item>
-          </ha-md-list>
-        `,
-      },
-      {
-        icon: mdiHeart,
-        title: "You're all set",
-        body: html`
-          <p class="muted">
-            That's it. Your features are ready. You can fine-tune any of them
-            from the Cloud page at any time.
-          </p>
-          <p class="muted">
-            Thank you for your support. Every subscription funds Home Assistant
-            and the Open Home Foundation, paying full-time developers and
-            keeping the project independent. No private equity, no ads, no data
-            harvesting.
-          </p>
-        `,
-      },
-    ];
+          <span class="pill active">Included</span>
+        </div>
+        <div class="option-actions">
+          <ha-button
+            appearance="plain"
+            href="https://www.home-assistant.io/voice_control/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Learn more
+          </ha-button>
+        </div>
+      </div>
+    `;
   }
 
-  private _onboardingNext() {
-    this._onboardingStep = Math.min(
-      this._onboardingStep + 1,
-      this._onboardingSteps().length - 1
-    );
+  private _assistantCard(
+    name: string,
+    appName: string,
+    icon: string,
+    colorKey: string,
+    tagline: string,
+    bullets: string[],
+    linked: boolean,
+    started: boolean,
+    toggle: () => void
+  ): TemplateResult {
+    return html`
+      <div class="option-card">
+        <div class="option-head">
+          <div class="option-icon ${colorKey}">
+            <ha-svg-icon .path=${icon}></ha-svg-icon>
+          </div>
+          <div class="option-heading">
+            <span class="option-title">${name}</span>
+            <span class="option-sub">${tagline}</span>
+          </div>
+          ${linked
+            ? html`<span class="pill active">Active</span>`
+            : started
+              ? html`<span class="pill progress">In progress</span>`
+              : nothing}
+        </div>
+        ${linked
+          ? html`
+              <div class="option-actions">
+                <ha-button appearance="plain" @click=${toggle}>
+                  Turn off
+                </ha-button>
+              </div>
+            `
+          : started
+            ? html`
+                <p class="muted option-note">
+                  Finish linking in the ${appName} app to control your home by
+                  voice.
+                </p>
+                <div class="option-actions">
+                  <ha-button href="/config/voice-assistants/assistants">
+                    Continue
+                  </ha-button>
+                  <ha-button appearance="plain" @click=${toggle}>
+                    Cancel
+                  </ha-button>
+                </div>
+              `
+            : html`
+                <ul class="option-bullets">
+                  ${bullets.map(
+                    (bullet) =>
+                      html`<li>
+                        <ha-svg-icon .path=${mdiCheck}></ha-svg-icon>${bullet}
+                      </li>`
+                  )}
+                </ul>
+                <div class="option-actions">
+                  <ha-button @click=${toggle}>Set up ${name}</ha-button>
+                </div>
+              `}
+      </div>
+    `;
   }
 
-  private _onboardingBack() {
-    this._onboardingStep = Math.max(this._onboardingStep - 1, 0);
+  private _openSetupDialog() {
+    this._setupDialogOpen = true;
   }
 
-  private _onboardingFinish() {
-    this._onboardingStep = 0;
+  private _closeSetupDialog() {
+    this._setupDialogOpen = false;
+    void this._onboardingFinish();
+  }
+
+  private _setupDialogClosed() {
+    // Closing via the header X or scrim just dismisses the dialog; it does not
+    // mark onboarding complete, so the ready card stays for next time.
+    this._setupDialogOpen = false;
+  }
+
+  private _toggleSetupAlexa() {
+    this._setupAlexa = !this._setupAlexa;
+  }
+
+  private _toggleSetupGoogle() {
+    this._setupGoogle = !this._setupGoogle;
+  }
+
+  private _toggleCloudBackup() {
+    this._cloudBackup = !this._cloudBackup;
+  }
+
+  private async _onboardingFinish() {
     if (this._isPreview) {
       this._setPreview("onboarded", true);
+      return;
+    }
+    // Persist completion as a cloud preference so it sticks across the
+    // account's devices. Requires backend support for
+    // `cloud_onboarding_complete` in cloud/update_prefs.
+    try {
+      await updateCloudPref(this.hass, { cloud_onboarding_complete: true });
+      fireEvent(this, "ha-refresh-cloud-status");
+    } catch (err: any) {
+      showToast(this, { message: err.message });
     }
   }
 
@@ -852,10 +1117,15 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
     return this.cloudStatus.active_subscription ? "subscribed" : "expired";
   }
 
-  // In production this would key off a real first-run / onboarding-complete
-  // flag; for this exploration it is driven by the preview controls.
+  // Backed by a cloud preference so onboarding completion persists across the
+  // account's devices. An absent value (current backend / existing accounts) is
+  // treated as onboarded, so the ready card stays hidden; the backend should
+  // default `cloud_onboarding_complete` to false for new subscribers to surface
+  // it. Requires backend support in cloud/update_prefs.
   private get _onboarded(): boolean {
-    return this._isPreview ? this._preview.onboarded : true;
+    return this._isPreview
+      ? this._preview.onboarded
+      : (this.cloudStatus.prefs.cloud_onboarding_complete ?? true);
   }
 
   private get _remoteEnabled(): boolean {
@@ -1003,15 +1273,9 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
 
   // Plan type and price are not returned by the cloud API (they live on the
   // account website); shown representatively here.
+  // Placeholder: plan type and price are region/currency-specific and are not
+  // exposed by the cloud API. Pull the real values from billing before shipping.
   private readonly _subscriptionPlan = "Yearly, $65/year";
-
-  private _openBackup() {
-    navigate("/config/backup");
-  }
-
-  private _openAssistants() {
-    navigate("/config/voice-assistants/assistants");
-  }
 
   private _openLogin() {
     navigate("/config/cloud/login");
@@ -1021,14 +1285,14 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
     navigate("/config/cloud/register");
   }
 
-  private async _toggleRemote(ev: Event) {
-    const toggle = ev.target as HaSwitch;
+  private async _toggleRemote() {
+    const enable = !this._remoteEnabled;
     if (this._isPreview) {
-      this._setPreview("remote", toggle.checked ? "connected" : "disabled");
+      this._setPreview("remote", enable ? "connected" : "disabled");
       return;
     }
     try {
-      if (toggle.checked) {
+      if (enable) {
         await connectCloudRemote(this.hass);
       } else {
         await disconnectCloudRemote(this.hass);
@@ -1036,24 +1300,22 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
       fireEvent(this, "ha-refresh-cloud-status");
     } catch (err: any) {
       showToast(this, { message: err.message });
-      toggle.checked = !toggle.checked;
     }
   }
 
-  private async _toggleWebrtc(ev: Event) {
-    const toggle = ev.target as HaSwitch;
+  private async _toggleWebrtc() {
+    const enable = !this._webrtcEnabled;
     if (this._isPreview) {
-      this._setPreview("webrtc", toggle.checked);
+      this._setPreview("webrtc", enable);
       return;
     }
     try {
       await updateCloudPref(this.hass, {
-        cloud_ice_servers_enabled: toggle.checked,
+        cloud_ice_servers_enabled: enable,
       });
       fireEvent(this, "ha-refresh-cloud-status");
     } catch (err: any) {
       showToast(this, { message: err.message });
-      toggle.checked = !toggle.checked;
     }
   }
 
@@ -1120,6 +1382,10 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
       return;
     }
     this._webhooks = await fetchWebhooks(this.hass);
+  }
+
+  private _toggleEmail() {
+    this._emailRevealed = !this._emailRevealed;
   }
 
   private async _signOut() {
@@ -1193,7 +1459,7 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           padding-bottom: calc(
             var(--safe-area-inset-bottom) + var(--ha-space-6)
           );
-          max-width: 600px;
+          max-width: 860px;
           margin: 0 auto;
           gap: var(--ha-space-6);
           display: flex;
@@ -1201,21 +1467,23 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
         }
         ha-card {
           display: block;
+          width: 100%;
+          max-width: 600px;
+          margin-inline: auto;
+        }
+        ha-card.onboarding-card {
+          max-width: 100%;
         }
         .card-title {
           font-size: var(--ha-font-size-xl);
           font-weight: var(--ha-font-weight-normal);
           line-height: var(--ha-line-height-condensed);
         }
-        .hero-eyebrow {
-          color: var(--secondary-text-color);
-          font-size: var(--ha-font-size-s);
-        }
         .hero-title {
           font-size: var(--ha-font-size-2xl);
           font-weight: var(--ha-font-weight-normal);
           line-height: var(--ha-line-height-condensed);
-          margin: var(--ha-space-1) 0 0;
+          margin: 0;
         }
         .lead {
           margin: var(--ha-space-2) 0 0;
@@ -1244,6 +1512,10 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           display: block;
           margin-top: var(--ha-space-3);
         }
+        ha-alert ha-button[slot="action"] {
+          width: max-content;
+          white-space: nowrap;
+        }
         .account-header {
           display: flex;
           align-items: center;
@@ -1267,33 +1539,290 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           font-size: var(--ha-font-size-s);
           margin-top: var(--ha-space-3);
         }
-        .onboarding-progress {
+        .ready-card {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: var(--ha-space-8);
+        }
+        .ready-left {
+          flex: 1.1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .ready-left h2 {
+          font-size: var(--ha-font-size-2xl);
+          font-weight: var(--ha-font-weight-normal);
+          margin: 0 0 var(--ha-space-2);
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+        }
+        .ready-left p {
+          margin: 0;
+        }
+        .ready-actions {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: var(--ha-space-2);
+          margin-top: var(--ha-space-4);
+        }
+        .ready-grid {
+          flex: 1;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: var(--ha-space-4) var(--ha-space-4);
+        }
+        @media (max-width: 600px) {
+          .ready-card {
+            flex-direction: column;
+            align-items: stretch;
+            gap: var(--ha-space-5);
+          }
+        }
+        .ready-chip {
+          display: flex;
+          align-items: center;
           gap: var(--ha-space-3);
+        }
+        .ready-chip-icon {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .chip-badge {
+          position: absolute;
+          right: -2px;
+          bottom: -2px;
+          --mdc-icon-size: 16px;
+          border-radius: 50%;
+          background-color: var(--card-background-color);
+        }
+        .chip-badge.on {
+          color: var(--success-color);
+        }
+        .chip-badge.recommended {
+          color: var(--warning-color);
+        }
+        .panel-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          --mdc-icon-size: 22px;
+          flex-shrink: 0;
+        }
+        .ready-chip.remote .ready-chip-icon,
+        .panel-icon.remote {
+          color: var(--blue-color);
+          background-color: color-mix(
+            in srgb,
+            var(--blue-color) 15%,
+            transparent
+          );
+        }
+        .ready-chip.backup .ready-chip-icon,
+        .panel-icon.backup {
+          color: var(--green-color);
+          background-color: color-mix(
+            in srgb,
+            var(--green-color) 15%,
+            transparent
+          );
+        }
+        .ready-chip.voice .ready-chip-icon,
+        .panel-icon.voice {
+          color: var(--purple-color);
+          background-color: color-mix(
+            in srgb,
+            var(--purple-color) 15%,
+            transparent
+          );
+        }
+        .ready-chip.streaming .ready-chip-icon,
+        .panel-icon.streaming {
+          color: var(--cyan-color);
+          background-color: color-mix(
+            in srgb,
+            var(--cyan-color) 15%,
+            transparent
+          );
+        }
+        .setup-intro {
+          margin: 0 0 var(--ha-space-4);
+        }
+        .setup-dialog {
+          display: flex;
+          flex-direction: column;
+          gap: var(--ha-space-3);
+        }
+        .setup-dialog ha-expansion-panel {
+          --expansion-panel-summary-padding: var(--ha-space-3) var(--ha-space-4);
+        }
+        .panel-header {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: var(--ha-space-3);
+          min-width: 0;
+        }
+        .panel-heading {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .panel-title {
+          font-size: var(--ha-font-size-m);
+          font-weight: var(--ha-font-weight-medium);
+        }
+        .panel-sub {
           color: var(--secondary-text-color);
           font-size: var(--ha-font-size-s);
-          margin-bottom: var(--ha-space-3);
+          font-weight: var(--ha-font-weight-normal);
         }
-        .dots {
+        .status-tick {
+          flex-shrink: 0;
+        }
+        .status-tick.on {
+          color: var(--success-color);
+        }
+        .status-tick.recommended {
+          color: var(--warning-color);
+        }
+        .panel-body {
+          padding: var(--ha-space-2) var(--ha-space-5) var(--ha-space-5)
+            var(--ha-space-14);
           display: flex;
-          gap: var(--ha-space-1);
+          flex-direction: column;
+          gap: var(--ha-space-3);
         }
-        .dot {
-          width: 6px;
-          height: 6px;
+        .panel-body p {
+          margin: 0;
+        }
+        .panel-body > ha-button {
+          align-self: flex-start;
+          --ha-button-padding-inline: 0;
+        }
+        .option-card {
+          border: 1px solid var(--divider-color);
+          border-radius: var(--ha-border-radius-lg, 12px);
+          padding: var(--ha-space-4);
+          display: flex;
+          flex-direction: column;
+          gap: var(--ha-space-3);
+        }
+        .option-head {
+          display: flex;
+          align-items: center;
+          gap: var(--ha-space-3);
+        }
+        .option-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          background-color: var(--divider-color);
+          --mdc-icon-size: 22px;
+          flex-shrink: 0;
         }
-        .dot.current {
-          background-color: var(--primary-color);
+        .option-icon.cloud {
+          color: var(--primary-color);
+          background-color: color-mix(
+            in srgb,
+            var(--primary-color) 15%,
+            transparent
+          );
         }
-        .onboarding-actions .spacer {
+        .option-icon.alexa {
+          color: var(--cyan-color);
+          background-color: color-mix(
+            in srgb,
+            var(--cyan-color) 15%,
+            transparent
+          );
+        }
+        .option-icon.google {
+          color: var(--blue-color);
+          background-color: color-mix(
+            in srgb,
+            var(--blue-color) 15%,
+            transparent
+          );
+        }
+        .option-heading {
           flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
         }
-        .onboarding-inline-action {
-          margin-top: var(--ha-space-2);
+        .option-title {
+          font-weight: var(--ha-font-weight-medium);
+        }
+        .option-sub {
+          color: var(--secondary-text-color);
+          font-size: var(--ha-font-size-s);
+        }
+        .option-note {
+          font-size: var(--ha-font-size-s);
+        }
+        .pill {
+          flex-shrink: 0;
+          align-self: flex-start;
+          padding: 2px var(--ha-space-2);
+          border-radius: 999px;
+          font-size: var(--ha-font-size-s);
+          white-space: nowrap;
+        }
+        .pill.active {
+          background-color: color-mix(
+            in srgb,
+            var(--primary-text-color) 8%,
+            transparent
+          );
+          color: var(--secondary-text-color);
+        }
+        .pill.progress {
+          background-color: color-mix(
+            in srgb,
+            var(--warning-color) 18%,
+            transparent
+          );
+          color: var(--warning-color);
+        }
+        .option-bullets {
+          margin: 0;
+          padding: 0;
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: var(--ha-space-1);
+          color: var(--secondary-text-color);
+          font-size: var(--ha-font-size-s);
+        }
+        .option-bullets li {
+          display: flex;
+          align-items: center;
+          gap: var(--ha-space-2);
+        }
+        .option-bullets ha-svg-icon {
+          color: var(--success-color);
+          --mdc-icon-size: 18px;
+          flex-shrink: 0;
+        }
+        .option-actions {
+          display: flex;
+          align-items: center;
+          gap: var(--ha-space-2);
         }
         ha-md-list-item {
           --md-item-overflow: visible;
@@ -1384,6 +1913,7 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
         .extras-content p {
           color: var(--secondary-text-color);
           padding-inline: var(--ha-space-4);
+          margin-top: 0;
         }
         .extras-content ha-md-list {
           padding-top: 0;
@@ -1409,9 +1939,15 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           flex-direction: row-reverse;
           justify-content: space-between;
         }
-        ha-input-copy {
-          display: block;
-          margin-top: var(--ha-space-3);
+        .email-line {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--ha-space-1);
+        }
+        .email-line ha-icon-button {
+          --ha-icon-button-size: 32px;
+          --mdc-icon-size: 18px;
+          color: var(--secondary-text-color);
         }
         .preview-card {
           border-style: dashed;

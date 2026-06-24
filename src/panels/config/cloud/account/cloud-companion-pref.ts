@@ -25,17 +25,17 @@ export class CloudCompanionPref extends LitElement {
             <div class="card-content">
               <p>
                 With Home Assistant Cloud, the Home Assistant app keeps talking
-                to your home even when you are away, so the data your
-                automations rely on stays current wherever you are.
+                to your home even when you're away, so the data your automations
+                rely on stays current wherever you are.
               </p>
               <ul>
                 <li>
-                  Up-to-date sensors and location, even when you are away from
+                  Up-to-date sensors and location, even when you're away from
                   home.
                 </li>
                 <li>
                   Presence automations like "I just left home" keep running
-                  while you are out.
+                  while you're out.
                 </li>
                 <li>
                   Alerts that depend on your phone, like "battery low", keep
@@ -46,7 +46,7 @@ export class CloudCompanionPref extends LitElement {
                   forwarding and nothing on your network exposed.
                 </li>
                 <li>
-                  Push notifications are separate. They are delivered by Apple
+                  Push notifications are separate. They're delivered by Apple
                   and Google and reach your phone even without this connection.
                 </li>
               </ul>
@@ -73,8 +73,8 @@ export class CloudCompanionPref extends LitElement {
               <p>
                 Your phone uses it to send location and sensor updates back home
                 from anywhere, without opening ports or exposing your instance.
-                You will see it listed under Webhooks; there is no need to
-                manage it yourself.
+                You'll see it listed under Webhooks; there's no need to manage
+                it yourself.
               </p>
             </div>
           </ha-card>
