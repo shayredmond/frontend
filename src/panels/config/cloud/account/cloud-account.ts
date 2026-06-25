@@ -1656,8 +1656,8 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
             transparent
           );
         }
-        .setup-intro {
-          margin: 0 0 var(--ha-space-4);
+        .setup-intro.muted {
+          margin-bottom: var(--ha-space-6);
         }
         .setup-dialog {
           display: flex;
