@@ -1472,7 +1472,7 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           margin-inline: auto;
         }
         ha-card.onboarding-card {
-          max-width: 100%;
+          container-type: inline-size;
         }
         .card-title {
           font-size: var(--ha-font-size-xl);
@@ -1541,12 +1541,10 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
         }
         .ready-card {
           display: flex;
-          flex-direction: row;
-          align-items: center;
-          gap: var(--ha-space-8);
+          flex-direction: column;
+          gap: var(--ha-space-6);
         }
         .ready-left {
-          flex: 1.1;
           display: flex;
           flex-direction: column;
           min-width: 0;
@@ -1569,16 +1567,13 @@ export class CloudAccount extends SubscribeMixin(LitElement) {
           margin-top: var(--ha-space-4);
         }
         .ready-grid {
-          flex: 1;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: var(--ha-space-4) var(--ha-space-4);
+          gap: var(--ha-space-4);
         }
-        @media (max-width: 600px) {
-          .ready-card {
-            flex-direction: column;
-            align-items: stretch;
-            gap: var(--ha-space-5);
+        @container (max-width: 450px) {
+          .ready-grid {
+            grid-template-columns: 1fr;
           }
         }
         .ready-chip {
