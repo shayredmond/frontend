@@ -37,6 +37,8 @@ export class CloudLogin extends LitElement {
 
   @property({ type: Boolean, attribute: "card-less" }) public cardLess = false;
 
+  @property() public lead?: string;
+
   @query("#email", true) public emailField!: HaInput;
 
   @query("#password", true) private _passwordField!: HaInput;
@@ -65,6 +67,7 @@ export class CloudLogin extends LitElement {
   private _renderLoginForm() {
     return html`
       <div class="card-content login-form">
+        ${this.lead ? html`<p class="lead">${this.lead}</p>` : nothing}
         ${
           this._error
             ? html`<ha-alert alert-type="error">${this._error}</ha-alert>`
@@ -328,6 +331,11 @@ export class CloudLogin extends LitElement {
         .login-form {
           display: flex;
           flex-direction: column;
+        }
+        .lead {
+          margin: 0 0 var(--ha-space-2);
+          color: var(--secondary-text-color);
+          line-height: var(--ha-line-height-normal);
         }
       `,
     ];
