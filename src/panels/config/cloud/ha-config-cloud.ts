@@ -18,7 +18,12 @@ const LOGGED_IN_URLS = [
   "webhooks",
 ] as const;
 
-const NOT_LOGGED_IN_URLS = ["login", "register", "forgot-password"] as const;
+const NOT_LOGGED_IN_URLS = [
+  "start",
+  "login",
+  "register",
+  "forgot-password",
+] as const;
 
 type CloudPage =
   (typeof LOGGED_IN_URLS)[number] | (typeof NOT_LOGGED_IN_URLS)[number];
@@ -36,7 +41,7 @@ class HaConfigCloud extends HassRouterPage {
   @property({ attribute: false }) public cloudStatus!: CloudStatus;
 
   protected routerOptions: RouterOptions = {
-    defaultPage: "login",
+    defaultPage: "start",
     showLoading: true,
     initialLoad: () => this._cloudStatusLoaded,
     // Guard the different pages based on if we're logged in.
@@ -51,8 +56,12 @@ class HaConfigCloud extends HassRouterPage {
       return undefined;
     },
     routes: {
-      login: {
+      start: {
         tag: "cloud-login-panel",
+      },
+      login: {
+        tag: "cloud-signin-panel",
+        load: () => import("./login/cloud-signin-panel"),
       },
       register: {
         tag: "cloud-register",
@@ -106,7 +115,7 @@ class HaConfigCloud extends HassRouterPage {
     super.firstUpdated(changedProps);
     this.addEventListener("cloud-done", (ev) => {
       this._flashMessage = (ev as any).detail.flashMessage;
-      navigate("/config/cloud/login?view=signin");
+      navigate("/config/cloud/login");
     });
   }
 

@@ -67,7 +67,7 @@ export class CloudRegister extends LitElement {
       <hass-subpage
         .hass=${this.hass}
         .narrow=${this.narrow}
-        back-path="/config/cloud/login"
+        back-path="/config/cloud/start"
         .header=${this.hass.localize("ui.panel.config.cloud.register.headline")}
       >
         <div class="content">
@@ -238,7 +238,7 @@ export class CloudRegister extends LitElement {
     fireEvent(this, "cloud-email-changed", {
       value: this._emailField?.value ?? this.email ?? "",
     });
-    navigate("/config/cloud/login?view=signin");
+    navigate("/config/cloud/login");
   }
 
   private async _handleRegister() {
@@ -492,6 +492,11 @@ export class CloudRegister extends LitElement {
           font-size: var(--ha-font-size-2xl);
           font-weight: var(--ha-font-weight-normal);
           line-height: var(--ha-line-height-condensed);
+        }
+        /* Focused programmatically only (tabindex="-1") to announce the new
+           view to screen readers; no visible ring on the static heading. */
+        #confirm-title:focus {
+          outline: none;
         }
         .confirm p {
           margin: 0;

@@ -1,20 +1,19 @@
-// Implements the "Cloud Signup Flow" design handoff (Claude Design,
-// design_handoff_cloud_signup): screen 1 (signed-out landing) and screen 2
-// (sign in) as sub-views of /config/cloud/login, in the visual language of
-// the Make-cloud-page-consistent overview.
+// Signed-out landing for /config/cloud/start (the cloud entry). "Sign in"
+// routes to /config/cloud/login (the form) and "Start your free trial" to
+// /config/cloud/register.
 import {
   mdiBackupRestore,
+  mdiCellphone,
   mdiDeleteForever,
   mdiDotsVertical,
   mdiDownload,
   mdiEarth,
-  mdiFaceAgent,
   mdiMicrophone,
   mdiMicrophoneMessage,
 } from "@mdi/js";
 import type { TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, query, state } from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import { navigate } from "../../../../common/navigate";
 import "../../../../components/ha-alert";
@@ -34,14 +33,12 @@ import { haStyle } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import { cloudSubpageStyle } from "../account/cloud-subpage-style";
 import { showSupportPackageDialog } from "../account/show-dialog-cloud-support-package";
-import "./cloud-login";
-import type { CloudLogin } from "./cloud-login";
 
 const FEATURE_GRID = [
   ["backup", mdiBackupRestore, "green", "feature_backup"],
   ["voice-control", mdiMicrophoneMessage, "cyan", "feature_voice_control"],
   ["voice-quality", mdiMicrophone, "purple", "feature_voice_quality"],
-  ["support", mdiFaceAgent, "primary", "feature_support"],
+  ["companion", mdiCellphone, "primary", "feature_companion"],
 ] as const;
 
 @customElement("cloud-login-panel")
@@ -56,32 +53,8 @@ export class CloudLoginPanel extends LitElement {
 
   @property({ attribute: false }) public flashMessage?: string;
 
-  @state() private _view: "landing" | "signin" = "landing";
-
-  @query("cloud-login") private _cloudLoginElement?: CloudLogin;
-
-  public connectedCallback(): void {
-    super.connectedCallback();
-    if (new URLSearchParams(window.location.search).get("view") === "signin") {
-      this._view = "signin";
-      this._focusSignInEmail();
-    }
-  }
-
-  private async _focusSignInEmail() {
-    await this.updateComplete;
-    const cloudLogin = this._cloudLoginElement;
-    if (!cloudLogin) {
-      return;
-    }
-    await cloudLogin.updateComplete;
-    cloudLogin.emailField?.focus();
-  }
-
   protected render(): TemplateResult {
-    return this._view === "landing"
-      ? this._renderLanding()
-      : this._renderSignIn();
+    return this._renderLanding();
   }
 
   private _renderFlash() {
@@ -145,26 +118,24 @@ export class CloudLoginPanel extends LitElement {
                     "ui.panel.config.cloud.register.headline"
                   )}
                 </ha-button>
-                <ha-button appearance="plain" @click=${this._showSignIn}>
+                <ha-button appearance="plain" @click=${this._handleSignIn}>
                   ${this.hass.localize("ui.panel.config.cloud.login.sign_in")}
                 </ha-button>
               </div>
               <p class="trial-note">
                 ${this.hass.localize("ui.panel.config.cloud.login.trial_note")}
               </p>
-              <div class="funding">
-                <img
-                  src="/static/icons/logo_ohf.svg"
-                  alt="Open Home Foundation"
-                />
-                <p>
-                  ${this.hass.localize(
-                    "ui.panel.config.cloud.account.funding_note"
-                  )}
-                </p>
-              </div>
             </div>
           </ha-card>
+
+          <div class="funding-section">
+            <img src="/static/icons/logo_ohf.svg" alt="Open Home Foundation" />
+            <p>
+              ${this.hass.localize(
+                "ui.panel.config.cloud.account.funding_note"
+              )}
+            </p>
+          </div>
 
           <ha-card outlined>
             <div class="card-content feature-lead">
@@ -221,64 +192,13 @@ export class CloudLoginPanel extends LitElement {
     `;
   }
 
-  private _renderSignIn(): TemplateResult {
-    return html`
-      <hass-subpage
-        .hass=${this.hass}
-        .narrow=${this.narrow}
-        .header=${this.hass.localize("ui.panel.config.cloud.login.sign_in")}
-        .backCallback=${this._backToLanding}
-      >
-        <div class="content signin">
-          ${this._renderFlash()}
-          <cloud-login
-            .hass=${this.hass}
-            .email=${this.email}
-            .localize=${this.hass.localize}
-            .lead=${this.hass.localize(
-              "ui.panel.config.cloud.login.sign_in_lead"
-            )}
-            check-connection
-            @cloud-forgot-password=${this._handleForgotPassword}
-          ></cloud-login>
-        </div>
-      </hass-subpage>
-    `;
-  }
-
-  private _showSignIn() {
-    this._view = "signin";
-    history.replaceState(null, "", `${window.location.pathname}?view=signin`);
-    this._focusSignInEmail();
-  }
-
-  private _backToLanding = () => {
-    const typed = this._cloudLoginElement?.emailField?.value;
-    if (typed) {
-      fireEvent(this, "cloud-email-changed", { value: typed });
-    }
-    this._view = "landing";
-    if (window.location.search) {
-      history.replaceState(null, "", window.location.pathname);
-    }
-  };
-
-  private _syncEmail() {
-    const value = this._cloudLoginElement?.emailField?.value ?? this.email;
-    if (value) {
-      fireEvent(this, "cloud-email-changed", { value });
-    }
-  }
-
-  private _handleForgotPassword() {
+  private _handleSignIn() {
     this._dismissFlash();
-    this._syncEmail();
-    navigate("/config/cloud/forgot-password");
+    navigate("/config/cloud/login");
   }
 
   private _handleRegister() {
     this._dismissFlash();
-    this._syncEmail();
     navigate("/config/cloud/register");
   }
 
@@ -352,8 +272,7 @@ export class CloudLoginPanel extends LitElement {
         }
         .feature-grid,
         .footnote,
-        ha-alert,
-        cloud-login {
+        ha-alert {
           display: block;
           width: 100%;
           max-width: 600px;
@@ -372,9 +291,12 @@ export class CloudLoginPanel extends LitElement {
           margin: var(--ha-space-2) 0 0;
           line-height: var(--ha-line-height-normal);
           color: var(--secondary-text-color);
+          text-wrap: pretty;
         }
         .hero-actions {
           display: flex;
+          flex-direction: row-reverse;
+          justify-content: flex-start;
           align-items: center;
           gap: var(--ha-space-2);
           margin-top: var(--ha-space-5);
@@ -384,20 +306,26 @@ export class CloudLoginPanel extends LitElement {
           font-size: var(--ha-font-size-s);
           color: var(--secondary-text-color);
         }
-        .funding {
+        .funding-section {
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 600px;
+          margin-inline: auto;
+          margin-block: var(--ha-space-2);
           display: flex;
-          gap: var(--ha-space-2);
-          margin-top: var(--ha-space-3);
+          gap: var(--ha-space-3);
           align-items: flex-start;
+          padding-inline: var(--ha-space-4);
         }
-        .funding img {
-          height: 20px;
+        .funding-section img {
+          height: 28px;
           flex-shrink: 0;
         }
-        .funding p {
+        .funding-section p {
           margin: 0;
-          font-size: var(--ha-font-size-s);
           color: var(--secondary-text-color);
+          line-height: var(--ha-line-height-normal);
+          text-wrap: pretty;
         }
         .icon-tile {
           width: 40px;
@@ -445,6 +373,7 @@ export class CloudLoginPanel extends LitElement {
           margin: var(--ha-space-1) 0 0;
           color: var(--secondary-text-color);
           line-height: var(--ha-line-height-normal);
+          text-wrap: pretty;
         }
         .feature-cell p {
           font-size: var(--ha-font-size-s);
