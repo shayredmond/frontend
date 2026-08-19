@@ -162,6 +162,7 @@ export class CloudRegister extends LitElement {
             )}
           </ha-button>
           <ha-progress-button
+            appearance="filled"
             @click=${this._handleRegister}
             .progress=${this._requestInProgress}
             >${this.hass.localize(
@@ -202,17 +203,18 @@ export class CloudRegister extends LitElement {
             )}
           </p>
         </div>
-        <div class="card-actions split">
-          <button
-            class="link"
+        <div class="card-actions split confirm-actions">
+          <ha-button
+            appearance="plain"
             .disabled=${this._requestInProgress || this._resendInProgress}
             @click=${this._handleResendVerifyEmail}
           >
             ${this.hass.localize(
               "ui.panel.config.cloud.register.resend_confirm_email"
             )}
-          </button>
+          </ha-button>
           <ha-progress-button
+            appearance="filled"
             @click=${this._handleClickedConfirm}
             .progress=${this._requestInProgress}
             .disabled=${this._resendInProgress}
@@ -464,6 +466,11 @@ export class CloudRegister extends LitElement {
           justify-content: space-between;
           align-items: center;
         }
+        /* The confirm screen is a centered message, so the divider above its
+           actions reads as heavy; drop it. */
+        .card-actions.confirm-actions {
+          border-top: none;
+        }
         .confirm {
           display: flex;
           flex-direction: column;
@@ -509,6 +516,15 @@ export class CloudRegister extends LitElement {
           font-size: var(--ha-font-size-s);
           color: var(--secondary-text-color);
           text-align: center;
+        }
+        /* On narrow screens the two long labels don't fit side by side, so
+           stack them with the primary action on top. */
+        @media (max-width: 500px) {
+          .card-actions.split {
+            flex-direction: column-reverse;
+            align-items: stretch;
+            gap: var(--ha-space-2);
+          }
         }
       `,
     ];
