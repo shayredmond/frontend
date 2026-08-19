@@ -113,6 +113,19 @@ export class CloudLoginPanel extends LitElement {
               </p>
             </div>
 
+            <div class="foundation">
+              <img
+                class="ohf-logo"
+                src="/static/icons/logo_ohf.svg"
+                alt="Open Home Foundation"
+              />
+              <p class="foundation-note">
+                ${this.hass.localize(
+                  "ui.panel.config.cloud.login.funding_note"
+                )}
+              </p>
+            </div>
+
             <ha-card outlined class="usps">
               <div class="card-content usp-list">
                 ${USPS.map(
@@ -138,19 +151,6 @@ export class CloudLoginPanel extends LitElement {
                 )}
               </div>
             </ha-card>
-
-            <div class="foundation">
-              <img
-                class="ohf-logo"
-                src="/static/icons/logo_ohf.svg"
-                alt="Open Home Foundation"
-              />
-              <p class="foundation-note">
-                ${this.hass.localize(
-                  "ui.panel.config.cloud.login.funding_note"
-                )}
-              </p>
-            </div>
 
             <div class="actions">
               <div class="action-buttons">
