@@ -34,11 +34,14 @@ import type { HomeAssistant } from "../../../../types";
 import { cloudSubpageStyle } from "../account/cloud-subpage-style";
 import { showSupportPackageDialog } from "../account/show-dialog-cloud-support-package";
 
-const FEATURE_GRID = [
-  ["backup", mdiBackupRestore, "green", "feature_backup"],
-  ["voice-control", mdiMicrophoneMessage, "cyan", "feature_voice_control"],
-  ["voice-quality", mdiMicrophone, "purple", "feature_voice_quality"],
-  ["companion", mdiCellphone, "primary", "feature_companion"],
+// The full USP list shown in the right-hand column. A single flat list keeps
+// the value props from fighting for attention (design review, Aug 2026).
+const USPS = [
+  [mdiEarth, "blue", "feature_remote"],
+  [mdiBackupRestore, "green", "feature_backup"],
+  [mdiMicrophoneMessage, "cyan", "feature_voice_control"],
+  [mdiMicrophone, "purple", "feature_voice_quality"],
+  [mdiCellphone, "primary", "feature_companion"],
 ] as const;
 
 @customElement("cloud-login-panel")
@@ -100,15 +103,57 @@ export class CloudLoginPanel extends LitElement {
         </ha-dropdown>
         <div class="content">
           ${this._renderFlash()}
-          <ha-card outlined>
-            <div class="card-content hero">
+          <div class="landing">
+            <div class="pitch">
               <h2>
                 ${this.hass.localize("ui.panel.config.cloud.login.hero_title")}
               </h2>
               <p class="lead">
                 ${this.hass.localize("ui.panel.config.cloud.login.hero_lead")}
               </p>
-              <div class="hero-actions">
+            </div>
+
+            <ha-card outlined class="usps">
+              <div class="card-content usp-list">
+                ${USPS.map(
+                  ([icon, tint, i18nBase]) => html`
+                    <div class="usp">
+                      <div class="icon-tile ${tint}">
+                        <ha-svg-icon .path=${icon}></ha-svg-icon>
+                      </div>
+                      <div class="usp-text">
+                        <div class="usp-title">
+                          ${this.hass.localize(
+                            `ui.panel.config.cloud.login.${i18nBase}_title`
+                          )}
+                        </div>
+                        <p>
+                          ${this.hass.localize(
+                            `ui.panel.config.cloud.login.${i18nBase}_body`
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  `
+                )}
+              </div>
+            </ha-card>
+
+            <div class="foundation">
+              <img
+                class="ohf-logo"
+                src="/static/icons/logo_ohf.svg"
+                alt="Open Home Foundation"
+              />
+              <p class="foundation-note">
+                ${this.hass.localize(
+                  "ui.panel.config.cloud.login.funding_note"
+                )}
+              </p>
+            </div>
+
+            <div class="actions">
+              <div class="action-buttons">
                 <ha-button
                   size="l"
                   appearance="filled"
@@ -126,59 +171,6 @@ export class CloudLoginPanel extends LitElement {
                 ${this.hass.localize("ui.panel.config.cloud.login.trial_note")}
               </p>
             </div>
-          </ha-card>
-
-          <div class="funding-section">
-            <img src="/static/icons/logo_ohf.svg" alt="Open Home Foundation" />
-            <p>
-              ${this.hass.localize(
-                "ui.panel.config.cloud.account.funding_note"
-              )}
-            </p>
-          </div>
-
-          <ha-card outlined>
-            <div class="card-content feature-lead">
-              <div class="icon-tile blue">
-                <ha-svg-icon .path=${mdiEarth}></ha-svg-icon>
-              </div>
-              <div class="feature-text">
-                <div class="feature-title">
-                  ${this.hass.localize(
-                    "ui.panel.config.cloud.login.feature_remote_title"
-                  )}
-                </div>
-                <p>
-                  ${this.hass.localize(
-                    "ui.panel.config.cloud.login.feature_remote_body"
-                  )}
-                </p>
-              </div>
-            </div>
-          </ha-card>
-
-          <div class="feature-grid">
-            ${FEATURE_GRID.map(
-              ([key, icon, tint, i18nBase]) => html`
-                <ha-card outlined data-feature=${key}>
-                  <div class="card-content feature-cell">
-                    <div class="icon-tile ${tint}">
-                      <ha-svg-icon .path=${icon}></ha-svg-icon>
-                    </div>
-                    <div class="feature-title small">
-                      ${this.hass.localize(
-                        `ui.panel.config.cloud.login.${i18nBase}_title`
-                      )}
-                    </div>
-                    <p>
-                      ${this.hass.localize(
-                        `ui.panel.config.cloud.login.${i18nBase}_body`
-                      )}
-                    </p>
-                  </div>
-                </ha-card>
-              `
-            )}
           </div>
 
           <p class="footnote">
@@ -258,6 +250,7 @@ export class CloudLoginPanel extends LitElement {
       css`
         .content {
           box-sizing: border-box;
+          min-height: 100%;
           padding-bottom: calc(
             var(--safe-area-inset-bottom) + var(--ha-space-6)
           );
@@ -270,63 +263,63 @@ export class CloudLoginPanel extends LitElement {
           width: 100%;
           margin-bottom: 0;
         }
-        .feature-grid,
-        .footnote,
         ha-alert {
           display: block;
           width: 100%;
           max-width: 600px;
           margin-inline: auto;
         }
-        .hero {
-          padding: var(--ha-space-6) var(--ha-space-4) var(--ha-space-5);
+
+        /* Mobile-first: a single stacked column. */
+        .landing {
+          display: flex;
+          flex-direction: column;
+          gap: var(--ha-space-5);
+          width: 100%;
+          max-width: 600px;
+          margin-inline: auto;
         }
-        .hero h2 {
+        .pitch h2 {
           margin: 0;
           font-size: var(--ha-font-size-2xl);
           font-weight: var(--ha-font-weight-normal);
           line-height: var(--ha-line-height-condensed);
+          /* haStyle truncates h2 to one line; let the hero title wrap. */
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          text-wrap: balance;
         }
-        .hero .lead {
+        .pitch .lead {
           margin: var(--ha-space-2) 0 0;
           line-height: var(--ha-line-height-normal);
           color: var(--secondary-text-color);
           text-wrap: pretty;
         }
-        .hero-actions {
+
+        .usp-list {
           display: flex;
-          flex-direction: row-reverse;
-          justify-content: flex-start;
-          align-items: center;
-          gap: var(--ha-space-2);
-          margin-top: var(--ha-space-5);
+          flex-direction: column;
+          gap: var(--ha-space-5);
+          padding: var(--ha-space-5) var(--ha-space-4);
         }
-        .trial-note {
-          margin: var(--ha-space-3) 0 0;
-          font-size: var(--ha-font-size-s);
-          color: var(--secondary-text-color);
-        }
-        .funding-section {
-          box-sizing: border-box;
-          width: 100%;
-          max-width: 600px;
-          margin-inline: auto;
-          margin-block: var(--ha-space-2);
+        .usp {
           display: flex;
           gap: var(--ha-space-3);
           align-items: flex-start;
-          padding-inline: var(--ha-space-4);
         }
-        .funding-section img {
-          height: 28px;
-          flex-shrink: 0;
+        .usp-title {
+          font-size: var(--ha-font-size-m);
+          font-weight: var(--ha-font-weight-medium);
         }
-        .funding-section p {
-          margin: 0;
+        .usp-text p {
+          margin: var(--ha-space-1) 0 0;
+          font-size: var(--ha-font-size-s);
           color: var(--secondary-text-color);
           line-height: var(--ha-line-height-normal);
           text-wrap: pretty;
         }
+
         .icon-tile {
           width: 40px;
           height: 40px;
@@ -356,61 +349,115 @@ export class CloudLoginPanel extends LitElement {
           background: color-mix(in srgb, var(--primary-color) 15%, transparent);
           color: var(--primary-color);
         }
-        .feature-lead {
+
+        /* The Open Home Foundation message carries the most emphasis: logo
+           stacked above full-strength text, as plain page content. */
+        .foundation {
           display: flex;
           gap: var(--ha-space-3);
-          padding: var(--ha-space-4);
+          align-items: flex-start;
         }
-        .feature-title {
-          font-size: var(--ha-font-size-l);
-          font-weight: var(--ha-font-weight-medium);
+        .foundation .ohf-logo {
+          height: 32px;
+          flex-shrink: 0;
+          /* Nudge down so the logo aligns with the first line of text rather
+             than the line box's leading. */
+          margin-top: var(--ha-space-1);
         }
-        .feature-title.small {
-          font-size: var(--ha-font-size-m);
-        }
-        .feature-text p,
-        .feature-cell p {
-          margin: var(--ha-space-1) 0 0;
-          color: var(--secondary-text-color);
+        .foundation-note {
+          margin: 0;
+          color: var(--primary-text-color);
           line-height: var(--ha-line-height-normal);
           text-wrap: pretty;
         }
-        .feature-cell p {
-          font-size: var(--ha-font-size-s);
-        }
-        .feature-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: var(--ha-space-4);
-        }
-        .feature-cell {
-          display: flex;
-          flex-direction: column;
-          gap: var(--ha-space-2);
-          padding: var(--ha-space-4);
-        }
+        /* Nabu Casa attribution: a muted footer below everything, spanning
+           the full page width. */
         .footnote {
-          margin-block: 0;
+          margin: 0;
+          width: 100%;
+          max-width: 960px;
+          /* Push the footer to the very bottom of the page. */
+          margin-top: auto;
+          margin-inline: auto;
           font-size: var(--ha-font-size-s);
           color: var(--secondary-text-color);
           text-align: center;
+          text-wrap: pretty;
         }
         .footnote a {
           color: var(--primary-color);
         }
-        @container (max-width: 560px) {
-          .feature-grid {
-            grid-template-columns: minmax(0, 1fr);
-          }
+
+        /* Sticky bottom bar on mobile so the primary CTA stays reachable
+           while scrolling the USPs. */
+        .actions {
+          position: sticky;
+          bottom: 0;
+          z-index: 1;
+          display: flex;
+          flex-direction: column;
+          gap: var(--ha-space-2);
+          padding: var(--ha-space-3) 0
+            calc(var(--safe-area-inset-bottom) + var(--ha-space-3));
+          background: var(--primary-background-color);
+          box-shadow: 0 -1px 0 var(--divider-color);
         }
-        @container (max-width: 450px) {
-          .hero-actions {
-            flex-direction: column;
-            align-items: stretch;
+        .action-buttons {
+          display: flex;
+          gap: var(--ha-space-2);
+        }
+        .action-buttons ha-button {
+          flex: 1;
+          --ha-button-height: 48px;
+        }
+        .trial-note {
+          margin: 0;
+          font-size: var(--ha-font-size-s);
+          color: var(--secondary-text-color);
+          text-align: center;
+        }
+
+        /* Desktop: split actions (left) from the USP list (right). */
+        @container (min-width: 700px) {
+          .landing {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+            grid-template-rows: auto auto auto 1fr;
+            column-gap: var(--ha-space-7);
+            row-gap: var(--ha-space-6);
+            align-items: start;
+            max-width: 960px;
           }
-          .hero-actions ha-button {
+          .pitch {
+            grid-column: 1;
+            grid-row: 1;
+          }
+          .actions {
+            grid-column: 1;
+            grid-row: 2;
+            position: static;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+          }
+          .foundation {
+            grid-column: 1;
+            grid-row: 3;
+          }
+          .usps {
+            grid-column: 2;
+            grid-row: 1 / 5;
+          }
+          .action-buttons {
+            flex-direction: column;
+            max-width: 340px;
+          }
+          .action-buttons ha-button {
+            flex: initial;
             width: 100%;
-            --ha-button-height: 48px;
+          }
+          .trial-note {
+            text-align: start;
           }
         }
       `,
