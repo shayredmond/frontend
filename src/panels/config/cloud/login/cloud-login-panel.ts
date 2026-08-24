@@ -8,6 +8,7 @@ import {
   mdiDotsVertical,
   mdiDownload,
   mdiEarth,
+  mdiHandHeart,
   mdiMicrophone,
   mdiMicrophoneMessage,
 } from "@mdi/js";
@@ -37,6 +38,7 @@ import { showSupportPackageDialog } from "../account/show-dialog-cloud-support-p
 // The full USP list shown in the right-hand column. A single flat list keeps
 // the value props from fighting for attention (design review, Aug 2026).
 const USPS = [
+  [mdiHandHeart, "red", "feature_support"],
   [mdiEarth, "blue", "feature_remote"],
   [mdiBackupRestore, "green", "feature_backup"],
   [mdiMicrophoneMessage, "cyan", "feature_voice_control"],
@@ -113,19 +115,6 @@ export class CloudLoginPanel extends LitElement {
               </p>
             </div>
 
-            <div class="foundation">
-              <img
-                class="ohf-logo"
-                src="/static/icons/logo_ohf.svg"
-                alt="Open Home Foundation"
-              />
-              <p class="foundation-note">
-                ${this.hass.localize(
-                  "ui.panel.config.cloud.login.funding_note"
-                )}
-              </p>
-            </div>
-
             <ha-card outlined class="usps">
               <div class="card-content usp-list">
                 ${USPS.map(
@@ -156,7 +145,7 @@ export class CloudLoginPanel extends LitElement {
               <div class="action-buttons">
                 <ha-button
                   size="l"
-                  appearance="filled"
+                  appearance="accent"
                   @click=${this._handleRegister}
                 >
                   ${this.hass.localize(
@@ -349,27 +338,11 @@ export class CloudLoginPanel extends LitElement {
           background: color-mix(in srgb, var(--primary-color) 15%, transparent);
           color: var(--primary-color);
         }
+        .icon-tile.red {
+          background: color-mix(in srgb, var(--red-color) 15%, transparent);
+          color: var(--red-color);
+        }
 
-        /* The Open Home Foundation message carries the most emphasis: logo
-           stacked above full-strength text, as plain page content. */
-        .foundation {
-          display: flex;
-          gap: var(--ha-space-3);
-          align-items: flex-start;
-        }
-        .foundation .ohf-logo {
-          height: 32px;
-          flex-shrink: 0;
-          /* Nudge down so the logo aligns with the first line of text rather
-             than the line box's leading. */
-          margin-top: var(--ha-space-1);
-        }
-        .foundation-note {
-          margin: 0;
-          color: var(--primary-text-color);
-          line-height: var(--ha-line-height-normal);
-          text-wrap: pretty;
-        }
         /* Nabu Casa attribution: a muted footer below everything, spanning
            the full page width. */
         .footnote {
@@ -422,7 +395,7 @@ export class CloudLoginPanel extends LitElement {
           .landing {
             display: grid;
             grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-            grid-template-rows: auto auto auto 1fr;
+            grid-template-rows: auto auto 1fr;
             column-gap: var(--ha-space-7);
             row-gap: var(--ha-space-6);
             align-items: start;
@@ -440,13 +413,9 @@ export class CloudLoginPanel extends LitElement {
             background: none;
             box-shadow: none;
           }
-          .foundation {
-            grid-column: 1;
-            grid-row: 3;
-          }
           .usps {
             grid-column: 2;
-            grid-row: 1 / 5;
+            grid-row: 1 / 4;
           }
           .action-buttons {
             flex-direction: column;
