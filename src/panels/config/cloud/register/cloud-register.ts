@@ -206,12 +206,10 @@ export class CloudRegister extends LitElement {
         <div class="card-actions split confirm-actions">
           <ha-button
             appearance="plain"
-            .disabled=${this._requestInProgress || this._resendInProgress}
-            @click=${this._handleResendVerifyEmail}
+            .disabled=${this._requestInProgress}
+            @click=${this._handleCancelPendingLogin}
           >
-            ${this.hass.localize(
-              "ui.panel.config.cloud.register.resend_confirm_email"
-            )}
+            ${this.hass.localize("ui.common.cancel")}
           </ha-button>
           <ha-progress-button
             appearance="filled"
@@ -225,7 +223,13 @@ export class CloudRegister extends LitElement {
         </div>
       </ha-card>
       <p class="footnote">
-        ${this.hass.localize("ui.panel.config.cloud.register.nothing_arrived")}
+        ${this.hass.localize("ui.panel.config.cloud.register.nothing_arrived")}<button
+          class="link"
+          .disabled=${this._resendInProgress}
+          @click=${this._handleResendVerifyEmail}
+        >
+          ${this.hass.localize("ui.panel.config.cloud.register.resend_link")}</button
+        >.
       </p>
     `;
   }
@@ -373,6 +377,21 @@ export class CloudRegister extends LitElement {
     }
   }
 
+  private _handleCancelPendingLogin() {
+    // Cancel the pending login and return to the registration form so the
+    // user can fix a mistyped email and try again.
+    this._stopConfirmPolling();
+    this._password = "";
+    this._error = undefined;
+    this._success = undefined;
+    // The pending-login retry currently lives here in the frontend (see
+    // _startConfirmPolling). Once it moves to the backend for the real
+    // implementation, this handler must also cancel the server-side
+    // task/timer (e.g. a cloud/login/cancel command) so it stops retrying
+    // for the abandoned account.
+    this._view = "form";
+  }
+
   private async _handleResendVerifyEmail() {
     const email = this._view === "confirm" ? this._email : "";
 
@@ -467,9 +486,13 @@ export class CloudRegister extends LitElement {
           align-items: center;
         }
         /* The confirm screen is a centered message, so the divider above its
-           actions reads as heavy; drop it. */
+           actions reads as heavy; drop it. Layout comes from .card-actions.split
+           (cancel left, primary right), matching the create-account form. */
         .card-actions.confirm-actions {
           border-top: none;
+        }
+        .footnote button.link {
+          color: var(--primary-color);
         }
         .confirm {
           display: flex;
